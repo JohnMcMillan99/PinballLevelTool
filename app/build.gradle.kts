@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.grok.pinlevel"
+    namespace = "app.pinbuddy.lvl"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.grok.pinlevel"
+        applicationId = "app.pinbuddy.lvl"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -21,6 +21,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            isCrunchPngs = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
