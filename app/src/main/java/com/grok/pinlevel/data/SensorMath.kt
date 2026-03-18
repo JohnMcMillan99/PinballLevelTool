@@ -23,9 +23,11 @@ object SensorMath {
                 sqrt((accelX * accelX + accelZ * accelZ).toDouble())
             )
         )
+        // Roll: use atan2(Z,X)-90 so that flat (screen up, Z≈g) reads 0°.
+        // atan2(-X,Z) gives 90° when flat on some devices due to axis orientation.
         val roll = Math.toDegrees(
-            atan2(-accelX.toDouble(), accelZ.toDouble())
-        )
+            atan2(accelZ.toDouble(), accelX.toDouble())
+        ) - 90.0
         return TiltReading(
             pitch = pitch - pitchOffset,
             roll = roll - rollOffset

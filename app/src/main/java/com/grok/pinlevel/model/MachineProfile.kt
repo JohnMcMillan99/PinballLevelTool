@@ -9,6 +9,14 @@ data class MachineProfile(
     val targetAngle: Double = 6.5
 )
 
+@Serializable
+data class MachineLevelConfig(
+    val targetPitch: Double = 6.5,
+    val pitchTolerance: Double = 0.5,
+    val targetRoll: Double = 0.0,
+    val rollTolerance: Double = 0.5
+)
+
 enum class Preset(val label: String, val angle: Double) {
     MODERN_SS("Modern SS", 6.5),
     EM_CLASSIC("EM/Classic", 4.0),
@@ -31,5 +39,15 @@ val defaultMachines = listOf(
     MachineProfile("monster_bash", "Monster Bash"),
     MachineProfile("simpsons_pinball", "The Simpsons Pinball Party"),
     MachineProfile("white_water", "White Water"),
-    MachineProfile("funhouse", "Funhouse")
+    MachineProfile("funhouse", "Funhouse"),
+    MachineProfile("indiana_jones", "Indiana Jones: The Pinball Adventure"),
+    MachineProfile("star_wars", "Star Wars (Stern)"),
+    MachineProfile("acdc", "AC/DC"),
+    MachineProfile("metallica", "Metallica (Stern)"),
+    MachineProfile("ghostbusters", "Ghostbusters (Pro)"),
+    MachineProfile("guardians", "Guardians of the Galaxy"),
+    MachineProfile("avengers", "Avengers: Infinity Quest"),
+    MachineProfile("james_bond", "James Bond 007"),
+    MachineProfile("elvira", "Elvira's House of Horrors"),
+    MachineProfile("tron", "Tron: Legacy")
 )

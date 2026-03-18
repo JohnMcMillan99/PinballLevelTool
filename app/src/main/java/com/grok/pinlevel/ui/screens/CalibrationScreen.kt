@@ -3,18 +3,25 @@ package com.grok.pinlevel.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,9 +46,9 @@ fun CalibrationScreen(viewModel: LevelViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Calibration",
@@ -49,26 +56,91 @@ fun CalibrationScreen(viewModel: LevelViewModel) {
             color = Color.White
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
-        when (state.calibrationStep) {
-            0 -> CalibrationIdle(
-                pitchOffset = state.pitchOffset,
-                rollOffset = state.rollOffset,
-                onStart = { viewModel.startCalibration() }
-            )
-            1 -> CalibrationStepOne(
-                pitch = state.pitch,
-                roll = state.roll,
-                onCapture = { viewModel.captureFlat() },
-                onCancel = { viewModel.cancelCalibration() }
-            )
-            2 -> CalibrationStepTwo(
-                pitch = state.pitch,
-                roll = state.roll,
-                onCapture = { viewModel.captureFlipped() },
-                onCancel = { viewModel.cancelCalibration() }
-            )
+        GlassOffsetCard(
+            enabled = state.glassOffsetEnabled,
+            degrees = state.glassOffsetDegrees,
+            onEnabledChange = { viewModel.setGlassOffsetEnabled(it) },
+            onDegreesChange = { viewModel.setGlassOffsetDegrees(it) }
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        CalibrationIdle(
+            pitchOffset = state.pitchOffset,
+            rollOffset = state.rollOffset,
+            pitch = state.pitch,
+            roll = state.roll,
+            onCalibrate = { viewModel.calibrateFlat() }
+        )
+    }
+}
+
+@Composable
+private fun GlassOffsetCard(
+    enabled: Boolean,
+    degrees: Double,
+    onEnabledChange: (Boolean) -> Unit,
+    onDegreesChange: (Double) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Measuring on glass",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "The glass sits ~8.5° steeper than the playfield. Enable to show playfield pitch when your phone rests on the glass.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onEnabledChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = PinGreen,
+                        checkedTrackColor = PinGreen.copy(alpha = 0.5f)
+                    )
+                )
+            }
+            if (enabled) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Offset: ${String.format("%.1f", degrees)}°",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        modifier = Modifier.width(80.dp)
+                    )
+                    Slider(
+                        value = degrees.toFloat(),
+                        onValueChange = { onDegreesChange(it.toDouble()) },
+                        valueRange = 5f..12f,
+                        steps = 13,
+                        modifier = Modifier.weight(1f),
+                        colors = SliderDefaults.colors(
+                            thumbColor = PinGreen,
+                            activeTrackColor = PinGreen
+                        )
+                    )
+                }
+            }
         }
     }
 }
@@ -77,7 +149,9 @@ fun CalibrationScreen(viewModel: LevelViewModel) {
 private fun CalibrationIdle(
     pitchOffset: Double,
     rollOffset: Double,
-    onStart: () -> Unit
+    pitch: Double,
+    roll: Double,
+    onCalibrate: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -104,13 +178,18 @@ private fun CalibrationIdle(
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
-                text = "Calibration removes sensor bias using a flat-flip technique.\n\n" +
-                        "You will need a known flat surface.",
+                text = "Lay your phone on a flat surface with the screen facing up (phone on its back). Keep it still, then press Calibrate. This sets the current orientation as zero.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "Current reading: P ${String.format("%+.1f", pitch)}°  R ${String.format("%+.1f", roll)}°",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
             )
         }
     }
@@ -118,125 +197,13 @@ private fun CalibrationIdle(
     Spacer(Modifier.height(32.dp))
 
     Button(
-        onClick = onStart,
+        onClick = onCalibrate,
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
         colors = ButtonDefaults.buttonColors(containerColor = PinBlue),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Text("Start Calibration", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun CalibrationStepOne(
-    pitch: Double,
-    roll: Double,
-    onCapture: () -> Unit,
-    onCancel: () -> Unit
-) {
-    StepCard(
-        step = "Step 1 of 2",
-        instruction = "Place your phone face-up on a known flat surface.\n\nKeep it still and tap Capture.",
-        pitch = pitch,
-        roll = roll
-    )
-
-    Spacer(Modifier.height(24.dp))
-
-    Button(
-        onClick = onCapture,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = PinGreen),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Text("Capture Flat Reading", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    }
-
-    Spacer(Modifier.height(12.dp))
-
-    OutlinedButton(
-        onClick = onCancel,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Cancel", color = Color.Gray)
-    }
-}
-
-@Composable
-private fun CalibrationStepTwo(
-    pitch: Double,
-    roll: Double,
-    onCapture: () -> Unit,
-    onCancel: () -> Unit
-) {
-    StepCard(
-        step = "Step 2 of 2",
-        instruction = "Now flip the phone 180\u00B0 (upside down) on the same surface.\n\nKeep it still and tap Capture.",
-        pitch = pitch,
-        roll = roll
-    )
-
-    Spacer(Modifier.height(24.dp))
-
-    Button(
-        onClick = onCapture,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = PinGreen),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Text("Capture Flipped Reading", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    }
-
-    Spacer(Modifier.height(12.dp))
-
-    OutlinedButton(
-        onClick = onCancel,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Cancel", color = Color.Gray)
-    }
-}
-
-@Composable
-private fun StepCard(
-    step: String,
-    instruction: String,
-    pitch: Double,
-    roll: Double
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = step,
-                style = MaterialTheme.typography.titleLarge,
-                color = PinBlue
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = instruction,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Current: P ${String.format("%+.1f", pitch)}°  R ${String.format("%+.1f", roll)}°",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
-            )
-        }
+        Text("Calibrate", fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
